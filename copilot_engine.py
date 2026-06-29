@@ -19,17 +19,28 @@ class CopilotSuggestion:
 
 
 @dataclass
+class SpeakerResolution:
+    role: str
+    confidence: float
+    reason: str
+
+
+@dataclass
 class SessionState:
     patient_id: str
     transcript: List[Dict[str, str]] = field(default_factory=list)
     last_therapist_speech_time: float = 0.0
     pause_detected: bool = False
     risk_count: int = 0
+    last_speaker: str = ""
+    speaker_aliases: Dict[str, str] = field(default_factory=dict)
 
     def add_transcript(self, speaker: str, text: str) -> None:
         self.transcript.append({"speaker": speaker, "text": text, "ts": time.time()})
+        self.last_speaker = speaker
         if speaker == "therapist":
             self.last_therapist_speech_time = time.time()
+            self.pause_detected = False
 
     def get_full_context(self, max_turns: int = 10) -> str:
         recent = self.transcript[-max_turns:]
@@ -90,6 +101,96 @@ class CopilotEngine:
             )
             self.model = os.getenv("AZURE_OPENAI_MODEL", "gpt-4o")
             self.llm_enabled = True
+
+    def resolve_speaker(
+        self,
+        speaker_hint: str,
+        text: str,
+        speaker_id: str | None = None,
+        source: str = "text",
+    ) -> SpeakerResolution:
+        normalized_hint = (speaker_hint or "auto").strip().lower()
+        if normalized_hint in {"patient", "therapist"}:
+            if speaker_id:
+                self.state.speaker_aliases[speaker_id] = normalized_hint
+            return SpeakerResolution(
+                role=normalized_hint,
+                confidence=1.0,
+                reason="explicit-speaker",
+            )
+
+        if speaker_id and speaker_id in self.state.speaker_aliases:
+            mapped_role = self.state.speaker_aliases[speaker_id]
+            return SpeakerResolution(
+                role=mapped_role,
+                confidence=0.95,
+                reason=f"speaker-id:{speaker_id}",
+            )
+
+        lower_text = (text or "").strip().lower()
+        therapist_score = 0.0
+        patient_score = 0.0
+
+        if any(trigger in lower_text for trigger in self.TRIGGER_PHRASES):
+            therapist_score += 4.0
+
+        therapist_patterns = [
+            "tell me more",
+            "help me understand",
+            "walk me through",
+            "what do we know",
+            "how long",
+            "when did",
+            "have you",
+            "can you",
+            "would you",
+            "let's",
+        ]
+        if any(pattern in lower_text for pattern in therapist_patterns):
+            therapist_score += 2.0
+        if "?" in text:
+            therapist_score += 1.5
+
+        patient_patterns = [
+            "i feel",
+            "i am",
+            "i'm",
+            "i've",
+            "i have",
+            "i can't",
+            "my mood",
+            "my anxiety",
+            "my depression",
+        ]
+        if any(pattern in lower_text for pattern in patient_patterns):
+            patient_score += 2.5
+
+        patient_keywords = self._patient_context_keywords()
+        if any(keyword in lower_text for keyword in patient_keywords):
+            patient_score += 2.0
+
+        if source.endswith("mic") and self.state.last_speaker:
+            if self.state.last_speaker == "patient":
+                therapist_score += 0.75
+            else:
+                patient_score += 0.75
+
+        if therapist_score == 0.0 and patient_score == 0.0:
+            fallback_role = "patient" if self.state.last_speaker != "patient" else "therapist"
+            confidence = 0.45 if source.endswith("mic") else 0.35
+            reason = "alternating-fallback" if self.state.last_speaker else "default-first-speaker"
+            if speaker_id:
+                self.state.speaker_aliases[speaker_id] = fallback_role
+            return SpeakerResolution(role=fallback_role, confidence=confidence, reason=reason)
+
+        resolved_role = "therapist" if therapist_score > patient_score else "patient"
+        confidence = min(0.95, 0.55 + abs(therapist_score - patient_score) * 0.12)
+        reason = f"heuristic:{source}"
+
+        if speaker_id and abs(therapist_score - patient_score) >= 1.0:
+            self.state.speaker_aliases[speaker_id] = resolved_role
+
+        return SpeakerResolution(role=resolved_role, confidence=confidence, reason=reason)
 
     def ingest(self, speaker: str, text: str) -> List[CopilotSuggestion]:
         """Process a new transcript utterance and return suggestions."""
@@ -180,6 +281,15 @@ class CopilotEngine:
 
     def on_pause(self) -> List[CopilotSuggestion]:
         """Called when a pause is detected; return a quick summary or next-step cue."""
+        if self.state.last_speaker != "therapist":
+            return []
+
+        if self.state.last_therapist_speech_time <= 0:
+            return []
+
+        if self.state.pause_detected:
+            return []
+
         elapsed = (time.time() - self.state.last_therapist_speech_time) * 1000
         if elapsed < self.pause_threshold_ms:
             return []
@@ -193,6 +303,8 @@ class CopilotEngine:
         last_patient = self.state.get_last_patient_utterance()
         if not patient or not last_patient:
             return []
+
+        self.state.pause_detected = True
 
         return [CopilotSuggestion(
             type="summary",
@@ -285,3 +397,18 @@ class CopilotEngine:
             ))
 
         return suggestions
+
+    def _patient_context_keywords(self) -> List[str]:
+        keywords = set()
+        for bucket in self.RISK_KEYWORDS.values():
+            keywords.update(bucket)
+        keywords.update(self.DSM_HINTS.keys())
+
+        if self.patient:
+            for diagnosis in self.patient.diagnosis:
+                keywords.update(re.findall(r"[a-zA-Z']{4,}", diagnosis.lower()))
+            for flag in self.patient.risk_flags:
+                keywords.update(re.findall(r"[a-zA-Z']{4,}", flag.lower()))
+            keywords.update(trigger.lower() for trigger in self.patient.triggers)
+
+        return sorted(keywords)

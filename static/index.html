@@ -5,205 +5,713 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Voice-Native Therapist Copilot</title>
   <style>
+    :root {
+      --bg0: #070a17;
+      --bg1: #0b163a;
+      --card: rgba(255, 255, 255, 0.08);
+      --card2: rgba(255, 255, 255, 0.06);
+      --stroke: rgba(255, 255, 255, 0.10);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(255, 255, 255, 0.65);
+      --muted2: rgba(255, 255, 255, 0.50);
+      --shadow: 0 18px 50px rgba(0,0,0,0.45);
+      --brand: #7c3aed;
+      --brand2: #22c55e;
+      --warn: #f59e0b;
+      --high: #fb923c;
+      --crit: #ef4444;
+      --radius: 16px;
+      --radius2: 12px;
+    }
+
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #f4f6f8;
-      color: #1f2937;
       margin: 0;
-      padding: 20px;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background:
+        radial-gradient(900px 500px at 20% -10%, rgba(124, 58, 237, 0.40), transparent 60%),
+        radial-gradient(900px 600px at 90% 0%, rgba(34, 197, 94, 0.20), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      color: var(--text);
+      overflow: hidden;
     }
-    .container {
-      max-width: 960px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-      padding: 24px;
+
+    .app {
+      height: 100%;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 16px;
+      padding: 18px;
     }
-    h1 { margin-top: 0; font-size: 1.5rem; }
-    .subtitle { color: #6b7280; margin-bottom: 18px; }
-    .controls {
+
+    @media (max-width: 980px) {
+      body { overflow: auto; }
+      .app {
+        height: auto;
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+    }
+
+    .sidebar, .main {
+      background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+
+    .sidebar {
       display: flex;
-      gap: 12px;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .side-header {
+      padding: 16px 16px 12px 16px;
+      border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(90deg, rgba(124,58,237,0.25), rgba(34,197,94,0.15));
+    }
+
+    .brand-title {
+      display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 750;
+      letter-spacing: 0.2px;
     }
-    select, input, button {
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: 1px solid #d1d5db;
-      font-size: 0.95rem;
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,0.18);
+      color: var(--muted);
+      font-size: 0.78rem;
+      white-space: nowrap;
     }
-    button {
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      cursor: pointer;
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.45);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.10);
     }
-    button:hover { background: #1d4ed8; }
-    button:disabled { background: #9ca3af; cursor: not-allowed; }
-    .panel {
+    .dot.ok { background: var(--brand2); box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
+    .dot.warn { background: var(--warn); box-shadow: 0 0 0 3px rgba(245,158,11,0.20); }
+
+    .side-body {
+      padding: 14px 14px 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: auto;
+      min-height: 0;
+    }
+
+    .card {
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius2);
+      background: rgba(0,0,0,0.16);
+      padding: 12px;
+    }
+
+    .card h3 {
+      margin: 0 0 8px 0;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: 0.2px;
+    }
+
+    .grid2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 10px;
     }
-    @media (max-width: 720px) {
-      .panel { grid-template-columns: 1fr; }
-    }
-    .box {
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 14px;
-      background: #fafafa;
-      min-height: 240px;
-    }
-    .box h2 { margin: 0 0 10px 0; font-size: 1.05rem; }
-    .transcript-line { margin: 6px 0; font-size: 0.92rem; }
-    .speaker { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
-    .suggestion {
-      border-left: 4px solid #9ca3af;
-      background: #fff;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 6px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    .suggestion.critical { border-left-color: #dc2626; background: #fef2f2; }
-    .suggestion.high { border-left-color: #ea580c; background: #fff7ed; }
-    .suggestion.medium { border-left-color: #f59e0b; background: #fffbeb; }
-    .suggestion.low { border-left-color: #2563eb; background: #eff6ff; }
-    .suggestion-title { font-weight: 600; font-size: 0.85rem; }
-    .suggestion-body { font-size: 0.85rem; margin-top: 4px; color: #374151; }
-    .suggestion-meta { font-size: 0.7rem; color: #6b7280; margin-top: 6px; }
-    .latency { font-size: 0.8rem; color: #6b7280; margin-top: 8px; }
-    .input-row { display: flex; gap: 8px; margin-top: 10px; }
-    .input-row input { flex: 1; }
-    .footer { margin-top: 16px; font-size: 0.78rem; color: #6b7280; }
-    .badge {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      margin-left: 6px;
+
+    .field label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--muted2);
+      margin-bottom: 6px;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
     }
-    .badge.critical { background: #fee2e2; color: #991b1b; }
-    .badge.high { background: #ffedd5; color: #9a3412; }
-    .badge.medium { background: #fef3c7; color: #92400e; }
-    .badge.low { background: #dbeafe; color: #1e40af; }
+
+    select, input, button {
+      width: 100%;
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      outline: none;
+      font-size: 0.92rem;
+    }
+
+    select option { color: #111827; }
+
+    button {
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(90deg, rgba(124,58,237,0.90), rgba(99,102,241,0.80));
+      font-weight: 650;
+      letter-spacing: 0.2px;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary {
+      background: rgba(255,255,255,0.06);
+      font-weight: 600;
+    }
+    button.danger {
+      background: linear-gradient(90deg, rgba(239,68,68,0.86), rgba(251,146,60,0.75));
+    }
+    button.good {
+      background: linear-gradient(90deg, rgba(34,197,94,0.86), rgba(16,185,129,0.75));
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .toggle-row span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .switch {
+      width: 46px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.08);
+      position: relative;
+      flex: 0 0 auto;
+      cursor: pointer;
+    }
+    .switch::after {
+      content: "";
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      position: absolute;
+      top: 2px;
+      left: 3px;
+      background: rgba(255,255,255,0.80);
+      transition: transform 0.15s ease;
+    }
+    .switch.on {
+      background: rgba(34,197,94,0.20);
+      border-color: rgba(34,197,94,0.25);
+    }
+    .switch.on::after { transform: translateX(20px); background: rgba(255,255,255,0.92); }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .meta-item {
+      border: 1px solid rgba(255,255,255,0.09);
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px;
+      padding: 10px 10px;
+    }
+    .meta-k { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+    .meta-v { margin-top: 4px; font-size: 0.92rem; color: rgba(255,255,255,0.88); line-height: 1.25rem; }
+
+    .hint {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.62);
+      line-height: 1.2rem;
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 0;
+    }
+
+    .topbar {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(90deg, rgba(124,58,237,0.18), rgba(34,197,94,0.10));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar .title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar .sub {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.70);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(0,0,0,0.18);
+      color: var(--muted);
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    .chat {
+      padding: 14px 12px;
+      overflow: auto;
+      min-height: 0;
+      background:
+        radial-gradient(650px 420px at 10% 0%, rgba(124,58,237,0.10), transparent 55%),
+        radial-gradient(600px 500px at 90% 0%, rgba(34,197,94,0.06), transparent 55%);
+    }
+
+    .msg {
+      display: flex;
+      margin: 10px 0;
+    }
+
+    .msg.left { justify-content: flex-start; }
+    .msg.right { justify-content: flex-end; }
+    .msg.center { justify-content: center; }
+
+    .bubble {
+      max-width: min(700px, 86%);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.07);
+      padding: 10px 12px;
+      box-shadow: 0 10px 26px rgba(0,0,0,0.25);
+    }
+
+    .bubble.patient {
+      background: linear-gradient(180deg, rgba(59,130,246,0.16), rgba(255,255,255,0.05));
+      border-color: rgba(59,130,246,0.25);
+    }
+
+    .bubble.therapist {
+      background: linear-gradient(180deg, rgba(124,58,237,0.20), rgba(255,255,255,0.05));
+      border-color: rgba(124,58,237,0.28);
+    }
+
+    .bubble.copilot {
+      background: linear-gradient(180deg, rgba(34,197,94,0.16), rgba(255,255,255,0.05));
+      border-color: rgba(34,197,94,0.24);
+    }
+
+    .bubble.critical { border-color: rgba(239,68,68,0.55); background: linear-gradient(180deg, rgba(239,68,68,0.18), rgba(255,255,255,0.05)); }
+    .bubble.high { border-color: rgba(251,146,60,0.50); background: linear-gradient(180deg, rgba(251,146,60,0.16), rgba(255,255,255,0.05)); }
+    .bubble.medium { border-color: rgba(245,158,11,0.50); background: linear-gradient(180deg, rgba(245,158,11,0.12), rgba(255,255,255,0.05)); }
+
+    .msg-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .who {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.78);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .time {
+      font-size: 0.74rem;
+      color: rgba(255,255,255,0.55);
+      white-space: nowrap;
+    }
+
+    .msg-body {
+      color: rgba(255,255,255,0.90);
+      font-size: 0.98rem;
+      line-height: 1.35rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .tagrow {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18);
+      color: rgba(255,255,255,0.72);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge.critical { border-color: rgba(239,68,68,0.45); color: rgba(255,255,255,0.86); }
+    .badge.high { border-color: rgba(251,146,60,0.40); color: rgba(255,255,255,0.86); }
+    .badge.medium { border-color: rgba(245,158,11,0.40); color: rgba(255,255,255,0.86); }
+    .badge.low { border-color: rgba(59,130,246,0.40); color: rgba(255,255,255,0.86); }
+
+    .composer {
+      padding: 12px;
+      border-top: 1px solid var(--stroke);
+      background: rgba(0,0,0,0.18);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .composer .row {
+      display: grid;
+      grid-template-columns: 1fr 180px;
+      gap: 10px;
+    }
+
+    @media (max-width: 720px) {
+      .composer { grid-template-columns: 1fr; }
+      .composer .row { grid-template-columns: 1fr; }
+    }
+
+    .kbd {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.58);
+      text-align: right;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Voice-Native Therapist Copilot</h1>
-    <div class="subtitle">Passive ambient listening · Real-time suggestions · Risk-aware · &lt;500ms</div>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="side-header">
+        <div class="brand-title">
+          <span>Therapist Copilot</span>
+          <span class="status-pill"><span id="statusDot" class="dot"></span><span id="statusText">Disconnected</span></span>
+        </div>
+      </div>
 
-    <div class="controls">
-      <select id="patientSelect">
-        <option value="P-001">Sarah Thompson (P-001)</option>
-        <option value="P-002">James Chen (P-002)</option>
-      </select>
-      <button id="connectBtn">Start Session</button>
-      <button id="disconnectBtn" disabled>End Session</button>
-      <span id="status" style="font-size:0.85rem;color:#6b7280;">Disconnected</span>
-    </div>
+      <div class="side-body">
+        <div class="card">
+          <h3>Session</h3>
+          <div class="field">
+            <label>Patient</label>
+            <select id="patientSelect">
+              <option value="P-001">Sarah Thompson (P-001)</option>
+              <option value="P-002">James Chen (P-002)</option>
+            </select>
+          </div>
+          <div style="height:10px;"></div>
+          <div class="grid2">
+            <button id="connectBtn">Start Session</button>
+            <button id="disconnectBtn" class="danger" disabled>End Session</button>
+          </div>
+          <div style="height:10px;"></div>
+          <div class="grid2">
+            <button id="micBtn" class="secondary" disabled>Start Mic</button>
+            <button id="clearBtn" class="secondary">Clear</button>
+          </div>
+        </div>
 
-    <div class="panel">
-      <div class="box">
-        <h2>Live Transcript</h2>
-        <div id="transcript"></div>
-        <div class="input-row">
-          <input id="speakerText" type="text" placeholder="Type simulated speech..." />
-          <select id="speakerRole">
+        <div class="card">
+          <h3>Automation</h3>
+          <div class="field">
+            <label>Speaker Mode</label>
+            <select id="speakerMode">
+              <option value="auto">Backend Auto (Recommended)</option>
+              <option value="therapist">Force Therapist</option>
+              <option value="patient">Force Patient</option>
+            </select>
+          </div>
+          <div style="height:10px;"></div>
+          <div class="toggle-row">
+            <span>Voice Reply (TTS)</span>
+            <div id="voiceSwitch" class="switch"></div>
+          </div>
+          <div style="height:10px;"></div>
+          <div class="hint" id="compatHint"></div>
+        </div>
+
+        <div class="card">
+          <h3>Patient Snapshot</h3>
+          <div id="patientMeta" class="meta"></div>
+        </div>
+
+        <div class="card">
+          <h3>Notes</h3>
+          <div class="hint">
+            Start a session and the app listens in the background automatically. If Azure Speech keys are configured on the server,
+            live microphone transcription runs through Azure; otherwise it falls back to browser speech recognition.
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="title">
+          <h1>Live Session</h1>
+          <div class="sub">Passive listening · pause triggers · risk flags · DSM-aligned observations</div>
+        </div>
+        <div class="chips">
+          <div class="chip" id="micChip">Mic: Off</div>
+          <div class="chip" id="engineChip">Speech: Detecting...</div>
+          <div class="chip" id="latencyChip">Latency: --</div>
+        </div>
+      </div>
+
+      <div id="chat" class="chat"></div>
+
+      <div class="composer">
+        <div class="row">
+          <input id="quickText" type="text" placeholder="Fallback: type a line of speech (optional)" />
+          <select id="quickRole">
+            <option value="auto">Auto</option>
             <option value="patient">Patient</option>
             <option value="therapist">Therapist</option>
           </select>
-          <button id="sendTextBtn">Send</button>
         </div>
-        <div class="latency" id="latency">Latency: --</div>
+        <div>
+          <button id="sendBtn" class="good">Send</button>
+          <div class="kbd">Enter to send</div>
+        </div>
       </div>
-      <div class="box">
-        <h2>Copilot Suggestions</h2>
-        <div id="suggestions"></div>
-      </div>
-    </div>
-
-    <div class="footer">
-      Demo: <code>USE_MOCK_SPEECH=true</code> means audio is simulated via text input. In production, binary audio is streamed to Azure Speech SDK and processed by the same copilot pipeline.
-    </div>
+    </main>
   </div>
 
+  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
   <script>
     const connectBtn = document.getElementById('connectBtn');
     const disconnectBtn = document.getElementById('disconnectBtn');
     const patientSelect = document.getElementById('patientSelect');
-    const statusEl = document.getElementById('status');
-    const transcriptEl = document.getElementById('transcript');
-    const suggestionsEl = document.getElementById('suggestions');
-    const speakerText = document.getElementById('speakerText');
-    const speakerRole = document.getElementById('speakerRole');
-    const sendTextBtn = document.getElementById('sendTextBtn');
-    const latencyEl = document.getElementById('latency');
+    const micBtn = document.getElementById('micBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const speakerModeEl = document.getElementById('speakerMode');
+    const voiceSwitch = document.getElementById('voiceSwitch');
+    const compatHint = document.getElementById('compatHint');
+
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const micChip = document.getElementById('micChip');
+    const engineChip = document.getElementById('engineChip');
+    const latencyChip = document.getElementById('latencyChip');
+
+    const chatEl = document.getElementById('chat');
+    const quickText = document.getElementById('quickText');
+    const quickRole = document.getElementById('quickRole');
+    const sendBtn = document.getElementById('sendBtn');
+    const patientMetaEl = document.getElementById('patientMeta');
 
     let ws = null;
     let lastMessageTime = 0;
+    let micWanted = false;
+    let voiceWanted = false;
+    let browserRecognizer = null;
+    let azureRecognizer = null;
+    let speechRuntime = {
+      enabled: false,
+      provider: 'browser',
+      language: 'en-US'
+    };
 
-    function appendTranscript(speaker, text) {
-      const div = document.createElement('div');
-      div.className = 'transcript-line';
-      div.innerHTML = `<span class="speaker">${speaker}</span>: ${text}`;
-      transcriptEl.appendChild(div);
-      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    function nowTime() {
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
     }
 
-    function appendSuggestion(s) {
-      const div = document.createElement('div');
-      div.className = `suggestion ${s.urgency}`;
-      div.innerHTML = `
-        <div class="suggestion-title">${s.title}<span class="badge ${s.urgency}">${s.urgency}</span></div>
-        <div class="suggestion-body">${s.body.replace(/\n/g, '<br>')}</div>
-        <div class="suggestion-meta">Type: ${s.type}</div>
-      `;
-      suggestionsEl.appendChild(div);
-      suggestionsEl.scrollTop = suggestionsEl.scrollHeight;
+    function setStatus(state) {
+      if (state === 'connected') {
+        statusText.textContent = 'Connected';
+        statusDot.className = 'dot ok';
+      } else if (state === 'needs_http') {
+        statusText.textContent = 'Open http://127.0.0.1:8000/';
+        statusDot.className = 'dot warn';
+      } else {
+        statusText.textContent = 'Disconnected';
+        statusDot.className = 'dot';
+      }
+    }
 
+    function scrollToBottom() {
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    function addMessage({ align, bubbleClass, who, time, text, tags = [] }) {
+      const wrap = document.createElement('div');
+      wrap.className = `msg ${align}`;
+      const bubble = document.createElement('div');
+      bubble.className = `bubble ${bubbleClass}`;
+
+      const head = document.createElement('div');
+      head.className = 'msg-head';
+      const whoEl = document.createElement('div');
+      whoEl.className = 'who';
+      whoEl.textContent = who;
+      const timeEl = document.createElement('div');
+      timeEl.className = 'time';
+      timeEl.textContent = time;
+      head.appendChild(whoEl);
+      head.appendChild(timeEl);
+
+      const body = document.createElement('div');
+      body.className = 'msg-body';
+      body.textContent = text;
+
+      bubble.appendChild(head);
+      bubble.appendChild(body);
+
+      if (tags.length) {
+        const tagrow = document.createElement('div');
+        tagrow.className = 'tagrow';
+        for (const t of tags) {
+          const b = document.createElement('span');
+          b.className = `badge ${t.kind || ''}`.trim();
+          b.textContent = t.label;
+          tagrow.appendChild(b);
+        }
+        bubble.appendChild(tagrow);
+      }
+
+      wrap.appendChild(bubble);
+      chatEl.appendChild(wrap);
+      scrollToBottom();
+    }
+
+    function setLatency() {
       const now = performance.now();
-      const ms = (now - lastMessageTime).toFixed(0);
-      latencyEl.textContent = `Latency: ${ms} ms`;
+      const ms = lastMessageTime ? (now - lastMessageTime).toFixed(0) : '--';
+      latencyChip.textContent = `Latency: ${ms} ms`;
+    }
+
+    function setSpeechChip(label) {
+      engineChip.textContent = `Speech: ${label}`;
+    }
+
+    function speak(text) {
+      if (!voiceWanted) return;
+      if (!('speechSynthesis' in window)) return;
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.rate = 1.0;
+      msg.pitch = 1.0;
+      msg.volume = 1.0;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(msg);
+    }
+
+    function wsUrl() {
+      const override = window.COPILOT_WS_URL;
+      if (override && typeof override === 'string') return override;
+      if (location.protocol === 'file:') return 'ws://127.0.0.1:8000/ws';
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${proto}//${location.host}/ws`;
     }
 
     function connect() {
       const patientId = patientSelect.value;
-      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(`${proto}//${location.host}/ws`);
+      ws = new WebSocket(wsUrl());
 
       ws.onopen = () => {
-        statusEl.textContent = 'Connected';
-        statusEl.style.color = '#16a34a';
+        setStatus('connected');
         connectBtn.disabled = true;
         disconnectBtn.disabled = false;
-        ws.send(JSON.stringify({ patient_id: patientId, session_id: `demo-${Date.now()}` }));
+        micBtn.disabled = false;
+        ws.send(JSON.stringify({
+          patient_id: patientId,
+          session_id: `demo-${Date.now()}`,
+          pause_threshold_ms: 1000
+        }));
+        void setMic(true);
       };
 
       ws.onmessage = (evt) => {
         const data = JSON.parse(evt.data);
         if (data.event === 'transcript') {
-          appendTranscript(data.speaker, data.text);
+          const who = data.speaker === 'therapist' ? 'Therapist' : 'Patient';
+          const tags = [];
+          if (data.source) tags.push({ label: data.source, kind: 'low' });
+          if (typeof data.speaker_confidence === 'number') {
+            tags.push({ label: `speaker ${Math.round(data.speaker_confidence * 100)}%`, kind: 'low' });
+          }
+          addMessage({
+            align: data.speaker === 'therapist' ? 'right' : 'left',
+            bubbleClass: data.speaker === 'therapist' ? 'therapist' : 'patient',
+            who,
+            time: nowTime(),
+            text: data.text,
+            tags
+          });
         } else if (data.event === 'suggestion') {
-          appendSuggestion(data);
+          addMessage({
+            align: 'center',
+            bubbleClass: `copilot ${data.urgency || 'low'}`.trim(),
+            who: 'Copilot',
+            time: nowTime(),
+            text: `${data.title}\n\n${data.body}`,
+            tags: [
+              { label: data.type || 'suggestion', kind: 'low' },
+              { label: data.urgency || 'low', kind: data.urgency || 'low' }
+            ]
+          });
+          speak(`${data.title}. ${data.body}`);
         } else if (data.event === 'pong') {
-          // keep-alive
         }
+        setLatency();
       };
 
       ws.onclose = () => {
-        statusEl.textContent = 'Disconnected';
-        statusEl.style.color = '#6b7280';
+        setStatus('disconnected');
         connectBtn.disabled = false;
         disconnectBtn.disabled = true;
+        micBtn.disabled = true;
+        void setMic(false);
       };
     }
 
@@ -211,22 +719,317 @@
       if (ws) ws.close();
     }
 
-    function sendText() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        alert('Start a session first.');
-        return;
-      }
-      const text = speakerText.value.trim();
+    function sendUtterance(text, role = 'auto', meta = {}) {
       if (!text) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const chosen = role === 'auto' ? speakerModeEl.value : role;
+      const cleaned = String(text).replace(/^(therapist:|patient:)\s*/i, '').trim();
+      if (!cleaned) return;
       lastMessageTime = performance.now();
-      ws.send(JSON.stringify({ event: 'text', speaker: speakerRole.value, text }));
-      speakerText.value = '';
+      ws.send(JSON.stringify({
+        event: 'text',
+        speaker: chosen,
+        text: cleaned,
+        source: meta.source || 'manual',
+        speaker_id: meta.speakerId || null
+      }));
     }
 
-    connectBtn.addEventListener('click', connect);
+    function renderPatientMeta(patient) {
+      const safe = (v) => (v == null ? '' : String(v));
+      const joinList = (arr) => Array.isArray(arr) ? arr.join(', ') : safe(arr);
+      patientMetaEl.innerHTML = '';
+      const items = [
+        { k: 'Name', v: `${safe(patient.name)} (${safe(patient.id)})` },
+        { k: 'Age', v: safe(patient.age) || '—' },
+        { k: 'Diagnoses', v: joinList(patient.diagnosis) || '—' },
+        { k: 'Risk Flags', v: joinList(patient.risk_flags) || '—' },
+        { k: 'Medications', v: joinList(patient.medications) || '—' },
+        { k: 'History', v: safe(patient.history_summary) || '—' }
+      ];
+      for (const it of items) {
+        const div = document.createElement('div');
+        div.className = 'meta-item';
+        const k = document.createElement('div');
+        k.className = 'meta-k';
+        k.textContent = it.k;
+        const v = document.createElement('div');
+        v.className = 'meta-v';
+        v.textContent = it.v;
+        div.appendChild(k);
+        div.appendChild(v);
+        patientMetaEl.appendChild(div);
+      }
+    }
+
+    async function loadPatients() {
+      try {
+        const res = await fetch('/api/patients', { cache: 'no-store' });
+        if (!res.ok) return;
+        const patients = await res.json();
+        if (!Array.isArray(patients) || patients.length === 0) return;
+
+        patientSelect.innerHTML = '';
+        for (const p of patients) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = `${p.name} (${p.id})`;
+          patientSelect.appendChild(opt);
+        }
+
+        await loadPatientDetail(patientSelect.value);
+      } catch { }
+    }
+
+    async function loadPatientDetail(patientId) {
+      try {
+        const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const patient = await res.json();
+        if (patient && !patient.error) renderPatientMeta(patient);
+      } catch { }
+    }
+
+    function setMicUI() {
+      if (micWanted) {
+        micBtn.textContent = 'Stop Mic';
+        micBtn.className = 'secondary';
+        micChip.textContent = 'Mic: On';
+      } else {
+        micBtn.textContent = 'Start Mic';
+        micBtn.className = 'secondary';
+        micChip.textContent = 'Mic: Off';
+      }
+    }
+
+    async function setMic(on) {
+      micWanted = Boolean(on);
+      setMicUI();
+
+      if (!micWanted) {
+        await stopAzureMic();
+        stopBrowserMic();
+        return;
+      }
+
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      if (speechRuntime.enabled && window.SpeechSDK) {
+        try {
+          await startAzureMic();
+          return;
+        } catch {
+          setSpeechChip('Browser Fallback');
+        }
+      }
+
+      startBrowserMic();
+    }
+
+    async function loadSpeechRuntime() {
+      try {
+        const res = await fetch('/api/speech/runtime', { cache: 'no-store' });
+        if (!res.ok) throw new Error('speech runtime unavailable');
+        speechRuntime = await res.json();
+      } catch {
+        speechRuntime = { enabled: false, provider: 'browser', language: 'en-US' };
+      }
+
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (speechRuntime.enabled && window.SpeechSDK) {
+        setSpeechChip('Azure Ready');
+        compatHint.textContent = 'Azure Speech is configured. Starting a session will open the mic and stream live transcription through Azure.';
+      } else if (SR) {
+        setSpeechChip('Browser Ready');
+        compatHint.textContent = 'Azure Speech is not configured, so the app will use browser speech recognition automatically.';
+      } else {
+        setSpeechChip('Unavailable');
+        compatHint.textContent = 'No speech engine is available in this browser. Use Chrome or Edge, or configure Azure Speech on the server.';
+      }
+    }
+
+    async function fetchSpeechToken() {
+      const res = await fetch('/api/speech/token', { cache: 'no-store' });
+      if (!res.ok) throw new Error('token request failed');
+      const data = await res.json();
+      if (!data.enabled || !data.token || !data.region) {
+        throw new Error(data.message || 'Azure Speech is not available');
+      }
+      return data;
+    }
+
+    async function startAzureMic() {
+      if (azureRecognizer) return;
+      stopBrowserMic();
+
+      const tokenData = await fetchSpeechToken();
+      const SpeechSDK = window.SpeechSDK;
+      if (!SpeechSDK) throw new Error('SpeechSDK not loaded');
+
+      const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenData.token, tokenData.region);
+      speechConfig.speechRecognitionLanguage = tokenData.language || speechRuntime.language || 'en-US';
+
+      const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+      const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+      recognizer.recognized = (_s, e) => {
+        if (!micWanted) return;
+        if (!e || !e.result || e.result.reason !== SpeechSDK.ResultReason.RecognizedSpeech) return;
+        const text = String(e.result.text || '').trim();
+        if (!text) return;
+        sendUtterance(text, 'auto', {
+          source: 'azure-mic',
+          speakerId: e.result.speakerId || null
+        });
+      };
+
+      recognizer.canceled = async () => {
+        if (!micWanted) return;
+        await stopAzureMic();
+        if (micWanted) startBrowserMic();
+      };
+
+      recognizer.sessionStopped = async () => {
+        if (!micWanted) return;
+        await stopAzureMic();
+        if (micWanted) {
+          try {
+            await startAzureMic();
+          } catch {
+            startBrowserMic();
+          }
+        }
+      };
+
+      await new Promise((resolve, reject) => {
+        recognizer.startContinuousRecognitionAsync(resolve, reject);
+      });
+
+      azureRecognizer = recognizer;
+      setSpeechChip('Azure Live');
+    }
+
+    async function stopAzureMic() {
+      if (!azureRecognizer) return;
+      const recognizer = azureRecognizer;
+      azureRecognizer = null;
+      await new Promise((resolve) => {
+        try {
+          recognizer.stopContinuousRecognitionAsync(() => {
+            try { recognizer.close(); } catch { }
+            resolve();
+          }, () => resolve());
+        } catch {
+          resolve();
+        }
+      });
+    }
+
+    function startBrowserMic() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        micWanted = false;
+        setMicUI();
+        setSpeechChip('Unavailable');
+        return;
+      }
+
+      if (!browserRecognizer) {
+        browserRecognizer = new SR();
+        browserRecognizer.lang = speechRuntime.language || 'en-US';
+        browserRecognizer.continuous = true;
+        browserRecognizer.interimResults = false;
+
+        browserRecognizer.onresult = (event) => {
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            if (!result.isFinal) continue;
+            const text = (result[0]?.transcript || '').trim();
+            if (!text) continue;
+            sendUtterance(text, 'auto', { source: 'browser-mic' });
+          }
+        };
+
+        browserRecognizer.onerror = () => {
+          if (!micWanted) return;
+          setSpeechChip('Browser Error');
+        };
+      }
+
+      browserRecognizer.onend = () => {
+        if (!micWanted) return;
+        try { browserRecognizer.start(); } catch { }
+      };
+
+      setSpeechChip('Browser Live');
+      try { browserRecognizer.start(); } catch { }
+    }
+
+    function stopBrowserMic() {
+      if (!browserRecognizer) return;
+      try {
+        browserRecognizer.onend = null;
+        browserRecognizer.stop();
+      } catch { }
+    }
+
+    function clearUI() {
+      chatEl.innerHTML = '';
+      lastMessageTime = 0;
+      latencyChip.textContent = 'Latency: --';
+    }
+
+    connectBtn.addEventListener('click', () => {
+      clearUI();
+      connect();
+    });
     disconnectBtn.addEventListener('click', disconnect);
-    sendTextBtn.addEventListener('click', sendText);
-    speakerText.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendText(); });
+    micBtn.addEventListener('click', () => { void setMic(!micWanted); });
+    clearBtn.addEventListener('click', clearUI);
+    sendBtn.addEventListener('click', () => {
+      sendUtterance(quickText.value.trim(), quickRole.value);
+      quickText.value = '';
+    });
+    quickText.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        sendUtterance(quickText.value.trim(), quickRole.value);
+        quickText.value = '';
+      }
+    });
+
+    patientSelect.addEventListener('change', async () => {
+      await loadPatientDetail(patientSelect.value);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        disconnect();
+        setTimeout(() => connect(), 150);
+      }
+    });
+
+    voiceSwitch.addEventListener('click', () => {
+      voiceWanted = !voiceWanted;
+      voiceSwitch.className = voiceWanted ? 'switch on' : 'switch';
+    });
+
+    if (location.protocol === 'file:') {
+      setStatus('needs_http');
+    } else {
+      setStatus('disconnected');
+    }
+    setMicUI();
+    voiceSwitch.className = voiceWanted ? 'switch on' : 'switch';
+    setSpeechChip('Detecting...');
+
+    addMessage({
+      align: 'center',
+      bubbleClass: 'copilot',
+      who: 'Copilot',
+      time: nowTime(),
+      text: 'Start a session to begin passive voice listening. The mic will start automatically, the backend will infer therapist vs patient turns, and the copilot will surface risk flags, history, DSM observations, and pause-based suggestions in real time.'
+    });
+
+    loadSpeechRuntime();
+    loadPatients();
+    loadPatientDetail(patientSelect.value);
   </script>
 </body>
 </html>

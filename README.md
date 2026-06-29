@@ -15,7 +15,7 @@ Designed for **sub-500 ms response latency** with full context awareness.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Therapy Room                            │
+│                        Therapy Room                             │
 │  ┌──────────────┐        ┌──────────────┐                       │
 │  │  Microphone  │        │   Browser    │  (WebSocket)          │
 │  │  (therapist) │        │  copilot UI  │                       │
@@ -52,7 +52,7 @@ Designed for **sub-500 ms response latency** with full context awareness.
 |------|------|
 | `app.py` | FastAPI backend: WebSocket sessions, REST endpoints, static file serving |
 | `copilot_engine.py` | Business logic: transcript buffer, risk detection, DSM observations, suggestions |
-| `speech_processor.py` | Azure Speech SDK wrapper + mock fallback for offline demos |
+| `speech_processor.py` | Normalized speech segment ingestion for automated mic/browser/Azure transcript events |
 | `patient_data.py` | Mock patient records (diagnoses, meds, risk flags, history) |
 | `static/index.html` | Single-page demo UI with WebSocket client |
 
@@ -124,12 +124,13 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 5.2 Configure (optional for live Azure Speech)
+### 5.2 Configure (recommended for live Azure Speech)
 
 ```bash
 cp .env.example .env
-# Edit .env with your Azure Speech key and region
-# Set USE_MOCK_SPEECH=true to run without Azure keys
+# Edit .env with your Azure Speech key/region for live microphone transcription
+# Azure OpenAI is optional and only affects the LLM suggestion path
+# If Azure Speech is not configured, the UI falls back to browser SpeechRecognition
 ```
 
 ### 5.3 Start the server
@@ -144,13 +145,21 @@ Open `http://localhost:8000` in your browser.
 
 1. Click **Start Session**.
 2. Choose a patient (Sarah Thompson or James Chen).
-3. In the transcript box, type as the **patient**:
+3. Allow microphone access when your browser prompts for it.
+4. Speak naturally as patient and therapist. The app now:
+   - starts passive listening automatically,
+   - prefers Azure Speech when configured,
+   - falls back to browser speech recognition otherwise,
+   - routes every final utterance to the backend in `auto` speaker mode,
+   - infers therapist vs patient turns server-side.
+5. Try a patient statement such as:
    - `I feel worthless and can't go on`
-   - → Copilot will show a **critical/high risk** flag and a DSM observation.
-4. Type as the **therapist**:
-   - `help me think about the risk`
+   - → Copilot will show a **high/critical risk** flag and a DSM-aligned observation.
+6. Try a therapist trigger phrase such as:
+   - `Help me think about the risk`
    - → Copilot will surface patient history, recent notes, and a contextual suggestion.
-5. Pause for ~1 second after the therapist speaks → the copilot will emit a pause-based nudge.
+7. Pause for about 1 second after therapist speech
+   - → the copilot will emit a pause-based nudge inside the chatbox.
 
 ---
 
@@ -212,3 +221,34 @@ Voice-Native-Therapist/
 - Add LLM-based suggestion generation with streaming responses.
 - Implement Redis session persistence and horizontal scaling.
 - Add audit logging and consent management.
+
+
+# Patient 1: Sarah Thompson
+- Patient: I feel exhausted all the time and I barely sleep anymore.
+- Therapist: Tell me more about when your sleep started getting worse.
+- Patient: Since losing my job, I feel like I am a burden to everyone.
+- Therapist: Help me think about the risk in what she just said.
+- Patient: Some days I honestly feel like there is no point in trying.
+- Therapist: What do we know from her recent history?
+- Patient: My anxiety is so bad that I can't calm down at night.
+- Therapist: Suggest the next best question for me to ask.
+- Patient: I have been crying every day and I can't focus on anything.
+- Therapist: Any red flags I should explore right now?
+- Patient: I feel hopeless and I don't know how much longer I can do this.
+- Therapist: Can you summarize the main concerns so far?
+
+'
+# Patient 2: James Chen
+
+- Patient: I missed my medication twice this week and I have been drinking again.
+- Therapist: Suggest what I should explore next.
+- Patient: I cannot focus at work and I am falling behind on deadlines.
+- Therapist: What patterns from his history matter here?
+- Patient: After fighting with my partner, I drank way too much over the weekend.
+- Therapist: Any red flags from that statement?
+- Patient: My mind keeps jumping everywhere and I can't get organized.
+- Therapist: Help me think about whether this is ADHD worsening or something else.
+- Patient: I told myself I would cut down on alcohol, but I keep slipping.
+- Therapist: What risk factors do we know already?
+- Patient: I feel embarrassed that I keep missing doses and making the same mistakes.
+- Therapist: Suggest a supportive next question.
