@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice-Native Therapist Copilot</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 24px;
+    }
+    h1 { margin-top: 0; font-size: 1.5rem; }
+    .subtitle { color: #6b7280; margin-bottom: 18px; }
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    select, input, button {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      font-size: 0.95rem;
+    }
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 720px) {
+      .panel { grid-template-columns: 1fr; }
+    }
+    .box {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 14px;
+      background: #fafafa;
+      min-height: 240px;
+    }
+    .box h2 { margin: 0 0 10px 0; font-size: 1.05rem; }
+    .transcript-line { margin: 6px 0; font-size: 0.92rem; }
+    .speaker { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+    .suggestion {
+      border-left: 4px solid #9ca3af;
+      background: #fff;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .suggestion.critical { border-left-color: #dc2626; background: #fef2f2; }
+    .suggestion.high { border-left-color: #ea580c; background: #fff7ed; }
+    .suggestion.medium { border-left-color: #f59e0b; background: #fffbeb; }
+    .suggestion.low { border-left-color: #2563eb; background: #eff6ff; }
+    .suggestion-title { font-weight: 600; font-size: 0.85rem; }
+    .suggestion-body { font-size: 0.85rem; margin-top: 4px; color: #374151; }
+    .suggestion-meta { font-size: 0.7rem; color: #6b7280; margin-top: 6px; }
+    .latency { font-size: 0.8rem; color: #6b7280; margin-top: 8px; }
+    .input-row { display: flex; gap: 8px; margin-top: 10px; }
+    .input-row input { flex: 1; }
+    .footer { margin-top: 16px; font-size: 0.78rem; color: #6b7280; }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-left: 6px;
+      text-transform: uppercase;
+    }
+    .badge.critical { background: #fee2e2; color: #991b1b; }
+    .badge.high { background: #ffedd5; color: #9a3412; }
+    .badge.medium { background: #fef3c7; color: #92400e; }
+    .badge.low { background: #dbeafe; color: #1e40af; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Voice-Native Therapist Copilot</h1>
+    <div class="subtitle">Passive ambient listening · Real-time suggestions · Risk-aware · &lt;500ms</div>
+
+    <div class="controls">
+      <select id="patientSelect">
+        <option value="P-001">Sarah Thompson (P-001)</option>
+        <option value="P-002">James Chen (P-002)</option>
+      </select>
+      <button id="connectBtn">Start Session</button>
+      <button id="disconnectBtn" disabled>End Session</button>
+      <span id="status" style="font-size:0.85rem;color:#6b7280;">Disconnected</span>
+    </div>
+
+    <div class="panel">
+      <div class="box">
+        <h2>Live Transcript</h2>
+        <div id="transcript"></div>
+        <div class="input-row">
+          <input id="speakerText" type="text" placeholder="Type simulated speech..." />
+          <select id="speakerRole">
+            <option value="patient">Patient</option>
+            <option value="therapist">Therapist</option>
+          </select>
+          <button id="sendTextBtn">Send</button>
+        </div>
+        <div class="latency" id="latency">Latency: --</div>
+      </div>
+      <div class="box">
+        <h2>Copilot Suggestions</h2>
+        <div id="suggestions"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Demo: <code>USE_MOCK_SPEECH=true</code> means audio is simulated via text input. In production, binary audio is streamed to Azure Speech SDK and processed by the same copilot pipeline.
+    </div>
+  </div>
+
+  <script>
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const patientSelect = document.getElementById('patientSelect');
+    const statusEl = document.getElementById('status');
+    const transcriptEl = document.getElementById('transcript');
+    const suggestionsEl = document.getElementById('suggestions');
+    const speakerText = document.getElementById('speakerText');
+    const speakerRole = document.getElementById('speakerRole');
+    const sendTextBtn = document.getElementById('sendTextBtn');
+    const latencyEl = document.getElementById('latency');
+
+    let ws = null;
+    let lastMessageTime = 0;
+
+    function appendTranscript(speaker, text) {
+      const div = document.createElement('div');
+      div.className = 'transcript-line';
+      div.innerHTML = `<span class="speaker">${speaker}</span>: ${text}`;
+      transcriptEl.appendChild(div);
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    }
+
+    function appendSuggestion(s) {
+      const div = document.createElement('div');
+      div.className = `suggestion ${s.urgency}`;
+      div.innerHTML = `
+        <div class="suggestion-title">${s.title}<span class="badge ${s.urgency}">${s.urgency}</span></div>
+        <div class="suggestion-body">${s.body.replace(/\n/g, '<br>')}</div>
+        <div class="suggestion-meta">Type: ${s.type}</div>
+      `;
+      suggestionsEl.appendChild(div);
+      suggestionsEl.scrollTop = suggestionsEl.scrollHeight;
+
+      const now = performance.now();
+      const ms = (now - lastMessageTime).toFixed(0);
+      latencyEl.textContent = `Latency: ${ms} ms`;
+    }
+
+    function connect() {
+      const patientId = patientSelect.value;
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${proto}//${location.host}/ws`);
+
+      ws.onopen = () => {
+        statusEl.textContent = 'Connected';
+        statusEl.style.color = '#16a34a';
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        ws.send(JSON.stringify({ patient_id: patientId, session_id: `demo-${Date.now()}` }));
+      };
+
+      ws.onmessage = (evt) => {
+        const data = JSON.parse(evt.data);
+        if (data.event === 'transcript') {
+          appendTranscript(data.speaker, data.text);
+        } else if (data.event === 'suggestion') {
+          appendSuggestion(data);
+        } else if (data.event === 'pong') {
+          // keep-alive
+        }
+      };
+
+      ws.onclose = () => {
+        statusEl.textContent = 'Disconnected';
+        statusEl.style.color = '#6b7280';
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+      };
+    }
+
+    function disconnect() {
+      if (ws) ws.close();
+    }
+
+    function sendText() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        alert('Start a session first.');
+        return;
+      }
+      const text = speakerText.value.trim();
+      if (!text) return;
+      lastMessageTime = performance.now();
+      ws.send(JSON.stringify({ event: 'text', speaker: speakerRole.value, text }));
+      speakerText.value = '';
+    }
+
+    connectBtn.addEventListener('click', connect);
+    disconnectBtn.addEventListener('click', disconnect);
+    sendTextBtn.addEventListener('click', sendText);
+    speakerText.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendText(); });
+  </script>
+</body>
+</html>
