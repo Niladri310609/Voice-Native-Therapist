@@ -141,6 +141,44 @@ python app.py
 
 Open `http://localhost:8000` in your browser.
 
+### 5.3.1 Frontend on Netlify, backend elsewhere
+
+If you host only `static/index.html` on Netlify, Netlify will not serve the FastAPI WebSocket at `/ws`.
+
+- Deploy the FastAPI app separately on a backend host that supports WebSockets.
+- Add your Netlify origin to `CORS_ALLOW_ORIGINS` on the backend.
+- Point the Netlify page to the backend with either:
+  - `window.COPILOT_BACKEND_URL = "https://your-backend-host"` before the app script runs, or
+  - a query string such as `https://theris.netlify.app/?backend=https://your-backend-host`
+
+Example:
+
+```text
+https://theris.netlify.app/?backend=https://your-backend-host
+```
+
+### 5.3.2 Deploy backend to Render
+
+This repo now includes a Render blueprint in `render.yaml`.
+
+1. Push the `Voice-Native-Therapist` folder to GitHub.
+2. In Render, click **New +** -> **Blueprint** and select the repo.
+3. Confirm the service from `render.yaml` and deploy.
+4. In the Render dashboard, set environment variables as needed:
+   - `CORS_ALLOW_ORIGINS=https://theris.netlify.app`
+   - `USE_MOCK_SPEECH=true` for browser fallback demos
+   - `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_SPEECH_LANGUAGE` for Azure live transcription
+   - `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_KEY`, `AZURE_OPENAI_MODEL` if you want the LLM suggestion path
+5. After deployment, copy your Render URL, for example:
+   - `https://theris-backend.onrender.com`
+6. Open the Netlify frontend with:
+
+```text
+https://theris.netlify.app/?backend=https://theris-backend.onrender.com
+```
+
+Render will provide the `PORT` environment variable automatically, and `app.py` now reads it during startup.
+
 ### 5.4 Demo flow
 
 1. Click **Start Session**.

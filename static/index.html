@@ -646,12 +646,27 @@
       window.speechSynthesis.speak(msg);
     }
 
+    function backendBaseUrl() {
+      const fromQuery = new URLSearchParams(location.search).get('backend');
+      if (fromQuery) return fromQuery.replace(/\/+$/, '');
+      const explicit = window.COPILOT_BACKEND_URL;
+      if (explicit && typeof explicit === 'string') return explicit.replace(/\/+$/, '');
+      if (location.protocol === 'file:') return 'http://127.0.0.1:8000';
+      return `${location.protocol}//${location.host}`;
+    }
+
+    function apiUrl(path) {
+      const cleanPath = String(path || '').startsWith('/') ? path : `/${path}`;
+      return `${backendBaseUrl()}${cleanPath}`;
+    }
+
     function wsUrl() {
       const override = window.COPILOT_WS_URL;
       if (override && typeof override === 'string') return override;
-      if (location.protocol === 'file:') return 'ws://127.0.0.1:8000/ws';
-      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${location.host}/ws`;
+      const base = backendBaseUrl();
+      if (base.startsWith('https://')) return `wss://${base.slice('https://'.length)}/ws`;
+      if (base.startsWith('http://')) return `ws://${base.slice('http://'.length)}/ws`;
+      return `${base.replace(/\/+$/, '')}/ws`;
     }
 
     function connect() {
@@ -764,7 +779,7 @@
 
     async function loadPatients() {
       try {
-        const res = await fetch('/api/patients', { cache: 'no-store' });
+        const res = await fetch(apiUrl('/api/patients'), { cache: 'no-store' });
         if (!res.ok) return;
         const patients = await res.json();
         if (!Array.isArray(patients) || patients.length === 0) return;
@@ -783,7 +798,7 @@
 
     async function loadPatientDetail(patientId) {
       try {
-        const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}`, { cache: 'no-store' });
+        const res = await fetch(apiUrl(`/api/patients/${encodeURIComponent(patientId)}`), { cache: 'no-store' });
         if (!res.ok) return;
         const patient = await res.json();
         if (patient && !patient.error) renderPatientMeta(patient);
@@ -828,7 +843,7 @@
 
     async function loadSpeechRuntime() {
       try {
-        const res = await fetch('/api/speech/runtime', { cache: 'no-store' });
+        const res = await fetch(apiUrl('/api/speech/runtime'), { cache: 'no-store' });
         if (!res.ok) throw new Error('speech runtime unavailable');
         speechRuntime = await res.json();
       } catch {
@@ -849,7 +864,7 @@
     }
 
     async function fetchSpeechToken() {
-      const res = await fetch('/api/speech/token', { cache: 'no-store' });
+      const res = await fetch(apiUrl('/api/speech/token'), { cache: 'no-store' });
       if (!res.ok) throw new Error('token request failed');
       const data = await res.json();
       if (!data.enabled || !data.token || !data.region) {

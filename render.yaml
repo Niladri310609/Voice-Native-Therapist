@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: theris-backend
+    runtime: python
+    plan: free
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    healthCheckPath: /api/patients
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: USE_MOCK_SPEECH
+        value: "true"
+      - key: CORS_ALLOW_ORIGINS
+        value: https://theris.netlify.app
