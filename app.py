@@ -18,19 +18,17 @@ from patient_data import get_patient, PATIENTS
 load_dotenv()
 
 def _cors_origins() -> list[str]:
-    raw = os.getenv(
-        "CORS_ALLOW_ORIGINS",
-        "http://localhost:8000,http://127.0.0.1:8000,https://theris.netlify.app",
-    )
+    raw = os.getenv("CORS_ALLOW_ORIGINS", "*")
     origins = [item.strip() for item in raw.split(",") if item.strip()]
     return origins or ["*"]
 
 
 app = FastAPI(title="Voice-Native Therapist Copilot")
+_cors = _cors_origins()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins(),
-    allow_credentials=True,
+    allow_origins=_cors,
+    allow_credentials="*" not in _cors,
     allow_methods=["*"],
     allow_headers=["*"],
 )
